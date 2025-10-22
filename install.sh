@@ -170,7 +170,7 @@ echo "------------------------------------------"
 echo
 
 cd "$_homedir"
-create_userdir "${_homedir}/.config/neofetch"
+create_userdir "${_homedir}/.config/fastfetch"
 create_userdir "${_homedir}/.vim/colors"
 
 create_userlink "linux-profile/conf/bashrc" ".bashrc"
@@ -187,7 +187,7 @@ echo
 cp -r linux-profile/ /root
 
 cd "/root"
-create_rootdir "/root/.config/neofetch"
+create_rootdir "/root/.config/fastfetch"
 create_rootdir "/root/.vim/colors"
 
 create_rootlink "linux-profile/conf/bashrc" ".bashrc"
