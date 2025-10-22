@@ -50,7 +50,10 @@ apt_update () {
   # Update package list
   echo "Updating package list..."
   apt update
-  add-apt-repository ppa:zhangsongcui3371/fastfetch -y
+
+  if [ "$_distro" == "ubuntu" ]; then
+    add-apt-repository ppa:zhangsongcui3371/fastfetch -y
+  fi
 
   # Upgrade all packages automatically
   echo
@@ -177,7 +180,6 @@ create_userlink "linux-profile/conf/bashrc" ".bashrc"
 create_userlink "linux-profile/conf/bash_aliases" ".bash_aliases"
 create_userlink "../../linux-profile/conf/fastfetch.jsonc" ".config/fastfetch/config.jsonc"
 create_userlink "linux-profile/conf/vimrc" ".vimrc"
-
 
 echo "------------------------------------------"
 echo "   Applying root profile customizations"
