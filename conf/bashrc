@@ -115,6 +115,7 @@ fi
 
 echo ""
 fastfetch
+echo ""
 
 if [ "$EUID" -eq 0 ]; then
   RED="\033[31;49;1m"
