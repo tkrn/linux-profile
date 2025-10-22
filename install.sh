@@ -85,11 +85,29 @@ install_apps () {
   apt autoremove -y
   apt autoclean -y
 
-
   echo
   echo "-------------------------------------"
   echo "   Applications installed!"
   echo "-------------------------------------"
+}
+
+create_userdir () {
+  mkdir -p $1
+  chown $(logname):$(logname) $1 -R
+  chmod 775 $1 
+}
+
+create_rootdir () {
+  mkdir -p $1
+  chmod 775 $1 
+}
+create_userlink () {
+  ln -sf $1 $2
+  chown $(logname):$(logname) $2
+}
+
+create_rootlink () {
+  ln -sf $1 $2
 }
 
 #######################################################################
@@ -138,9 +156,6 @@ clean bashrc
 clean bash_profile
 clean bash_logout
 
-cd "$_homedir"
-rel="${_homedir/}"
-
 apt_update
 check_apps
 
@@ -148,24 +163,53 @@ if [ ${#_install[@]} -gt 0 ]; then
   install_apps
 fi
 
-exit
-ln -sf "${_rel}/profile" ".profile"
-ln -sf "${_rel}/profile_rc" ".bashrc"
-ln -sf "${_rel}/conf/Xresources" ".Xresources"
-ln -sf "${_rel}/conf/inputrc" ".inputrc"
-ln -sf "${_rel}/conf/dircolors" ".dircolors"
-ln -sf "${_rel}/conf/screenrc" ".screenrc"
-ln -sf "${_rel}/conf/vimrc" ".vimrc"
-ln -sf "${_rel}/conf/tmux" ".tmux.conf"
+echo "------------------------------------------"
+echo "   Applying user profile customizations"
+echo "------------------------------------------"
+echo
 
-mkdir -p ".ssh"
-chmod 700 .ssh
-ln -sf "../${_rel}/conf/ssh_config" ".ssh/config"
+cd "$_homedir"
+create_userdir "${_homedir}/.config/neofetch"
+create_userdir "${_homedir}/.vim/colors"
 
-mkdir -p ".vim"
-[ -L .vim/colors ] && rm .vim/colors
-ln -sf "../${_rel}/conf/vim-colors" ".vim/colors"
-[ -L .vim/syntax ] && rm .vim/syntax
-ln -sf "../${_rel}/conf/vim-syntax" ".vim/syntax"
+create_userlink "linux-profile/conf/bashrc" ".bashrc"
+create_userlink "linux-profile/conf/bash_aliases" ".bash_aliases"
+create_userlink "../../linux-profile/conf/neofetch.conf" ".config/neofetch/config.conf"
+create_userlink "linux-profile/conf/vimrc" ".vimrc"
 
-set_ssh_keys
+
+echo "------------------------------------------"
+echo "   Applying root profile customizations"
+echo "------------------------------------------"
+echo
+
+cp -r linux-profile/ /root
+
+cd "/root"
+create_rootdir "/root/.config/neofetch"
+create_rootdir "/root/.vim/colors"
+
+create_rootlink "linux-profile/conf/bashrc" ".bashrc"
+create_rootlink "linux-profile/conf/bash_aliases" ".bash_aliases"
+create_rootlink "../../linux-profile/conf/neofetch.conf" ".config/neofetch/config.conf"
+create_rootlink "linux-profile/conf/vimrc" ".vimrc"
+
+#ln -sf "${_rel}/profile_rc" ".bashrc"
+#ln -sf "${_rel}/conf/Xresources" ".Xresources"
+#ln -sf "${_rel}/conf/inputrc" ".inputrc"
+#ln -sf "${_rel}/conf/dircolors" ".dircolors"
+#ln -sf "${_rel}/conf/screenrc" ".screenrc"
+#ln -sf "${_rel}/conf/vimrc" ".vimrc"
+#ln -sf "${_rel}/conf/tmux" ".tmux.conf"
+
+#mkdir -p ".ssh"
+#chmod 700 .ssh
+#ln -sf "../${_rel}/conf/ssh_config" ".ssh/config"
+
+#mkdir -p ".vim"
+#[ -L .vim/colors ] && rm .vim/colors
+#ln -sf "../${_rel}/conf/vim-colors" ".vim/colors"
+#[ -L .vim/syntax ] && rm .vim/syntax
+#ln -sf "../${_rel}/conf/vim-syntax" ".vim/syntax"
+
+#set_ssh_keys
