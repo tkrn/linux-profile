@@ -50,6 +50,7 @@ apt_update () {
   # Update package list
   echo "Updating package list..."
   apt update
+  add-apt-repository ppa:zhangsongcui3371/fastfetch -y
 
   # Upgrade all packages automatically
   echo
@@ -174,7 +175,7 @@ create_userdir "${_homedir}/.vim/colors"
 
 create_userlink "linux-profile/conf/bashrc" ".bashrc"
 create_userlink "linux-profile/conf/bash_aliases" ".bash_aliases"
-create_userlink "../../linux-profile/conf/neofetch.conf" ".config/neofetch/config.conf"
+create_userlink "../../linux-profile/conf/fastfetch.jsonc" ".config/fastfetch/config.jsonc"
 create_userlink "linux-profile/conf/vimrc" ".vimrc"
 
 
@@ -191,7 +192,7 @@ create_rootdir "/root/.vim/colors"
 
 create_rootlink "linux-profile/conf/bashrc" ".bashrc"
 create_rootlink "linux-profile/conf/bash_aliases" ".bash_aliases"
-create_rootlink "../../linux-profile/conf/neofetch.conf" ".config/neofetch/config.conf"
+create_rootlink "../../linux-profile/conf/fastfetch.jsonc" ".config/fastfetch/config.jsonc"
 create_rootlink "linux-profile/conf/vimrc" ".vimrc"
 
 #ln -sf "${_rel}/profile_rc" ".bashrc"
