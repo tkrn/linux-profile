@@ -11,20 +11,6 @@ _debug() {
   }
 }
 
-set_ssh_keys () {
-  _KEYDIR=~/.ssh
-  _KEYFILE=authorized_keys
-  [ -d $_KEYDIR ] || mkdir $_KEYDIR
-  [ -f $_KEYDIR/$_KEYFILE ] || touch $_KEYDIR/$_KEYFILE
-  [ -d $_KEYDIR ] && chmod 700 $_KEYDIR
-  [ -f $_KEYDIR/$_KEYFILE ] && chmod 600 $_KEYDIR/$_KEYFILE
-  grep -q -e "tkrn@github" $_KEYDIR/$_KEYFILE && return
-  #echo "Registering tkrn ssh key"
-  echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG6PqaHTxRbPmu74BtXi74vMkd5TAXC40H+EvQJzW47Z tkrn@github/111428782" >> $_KEYDIR/$_KEYFILE
-  unset _KEYDIR
-  unset _KEYFILE
-}
-
 clean () {
   [ -f ~/.$1 ] || return
   mv ~/.$1 ~/.$1.sav
@@ -49,6 +35,8 @@ apt_update () {
 
   # Update package list
   echo "Updating package list..."
+  apt update
+  apt install software-properties-common -y
   apt update
 
   if [ "$_distro" == "ubuntu" ]; then
@@ -175,11 +163,15 @@ echo
 cd "$_homedir"
 create_userdir "${_homedir}/.config/fastfetch"
 create_userdir "${_homedir}/.vim/colors"
-
+create_userdir "${_homedir}/.ssh"
+chmod 700 "${_homedir}/.ssh"
+create_userlink "../linux-profile/conf/authorized_keys" ".ssh/authorized_keys"
 create_userlink "linux-profile/conf/bashrc" ".bashrc"
 create_userlink "linux-profile/conf/bash_aliases" ".bash_aliases"
 create_userlink "../../linux-profile/conf/fastfetch.jsonc" ".config/fastfetch/config.jsonc"
 create_userlink "linux-profile/conf/vimrc" ".vimrc"
+
+
 
 echo "------------------------------------------"
 echo "   Applying root profile customizations"
@@ -214,5 +206,3 @@ create_rootlink "linux-profile/conf/vimrc" ".vimrc"
 #ln -sf "../${_rel}/conf/vim-colors" ".vim/colors"
 #[ -L .vim/syntax ] && rm .vim/syntax
 #ln -sf "../${_rel}/conf/vim-syntax" ".vim/syntax"
-
-#set_ssh_keys

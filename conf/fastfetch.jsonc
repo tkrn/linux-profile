@@ -21,9 +21,16 @@
     "terminalfont",
     "cpu",
     "gpu",
+    "localip", 
     "memory",
-    "swap",
-    "disk",
-    "localip"
+    {
+      "type": "disk",
+      "showZfs": true
+    },
+    {
+      "type": "command",
+      "key": "ZFS",
+      "text": "command -v zpool >/dev/null && zpool list -H -o name,alloc,size,capacity | awk 'BEGIN{pad=\"                                                    \"}{pct=$4; gsub(\"%\",\"\",pct); bars=int(pct/5); printf \"%s%-10s [\", (NR==1?\"\":pad), $1; for(i=0;i<bars;i++) printf \"#\"; for(i=bars;i<20;i++) printf \"-\"; printf \"] %s%%  %s/%s\\n\", pct,$2,$3}'"
+    } 
   ]
 }
