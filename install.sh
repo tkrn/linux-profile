@@ -117,6 +117,7 @@ _pkgs["screen"]="screen"
 _pkgs["fastfetch"]="fastfetch"
 _pkgs["htop"]="htop"
 _pkgs["bashtop"]="bashtop"
+_pkgs["btop"]="btop"
 _pkgs["ifconfig"]="net-tools"
 _pkgs["dig"]="dnsutils"
 _pkgs["minicom"]="minicom"
@@ -171,8 +172,6 @@ create_userlink "linux-profile/conf/bash_aliases" ".bash_aliases"
 create_userlink "../../linux-profile/conf/fastfetch.jsonc" ".config/fastfetch/config.jsonc"
 create_userlink "linux-profile/conf/vimrc" ".vimrc"
 
-
-
 echo "------------------------------------------"
 echo "   Applying root profile customizations"
 echo "------------------------------------------"
@@ -188,21 +187,3 @@ create_rootlink "linux-profile/conf/bashrc" ".bashrc"
 create_rootlink "linux-profile/conf/bash_aliases" ".bash_aliases"
 create_rootlink "../../linux-profile/conf/fastfetch.jsonc" ".config/fastfetch/config.jsonc"
 create_rootlink "linux-profile/conf/vimrc" ".vimrc"
-
-#ln -sf "${_rel}/profile_rc" ".bashrc"
-#ln -sf "${_rel}/conf/Xresources" ".Xresources"
-#ln -sf "${_rel}/conf/inputrc" ".inputrc"
-#ln -sf "${_rel}/conf/dircolors" ".dircolors"
-#ln -sf "${_rel}/conf/screenrc" ".screenrc"
-#ln -sf "${_rel}/conf/vimrc" ".vimrc"
-#ln -sf "${_rel}/conf/tmux" ".tmux.conf"
-
-#mkdir -p ".ssh"
-#chmod 700 .ssh
-#ln -sf "../${_rel}/conf/ssh_config" ".ssh/config"
-
-#mkdir -p ".vim"
-#[ -L .vim/colors ] && rm .vim/colors
-#ln -sf "../${_rel}/conf/vim-colors" ".vim/colors"
-#[ -L .vim/syntax ] && rm .vim/syntax
-#ln -sf "../${_rel}/conf/vim-syntax" ".vim/syntax"
