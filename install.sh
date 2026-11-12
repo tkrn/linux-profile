@@ -94,14 +94,14 @@ install_apps () {
 
   if [ "${#_installstring[@]}" -gt 0 ]; then
     case "$_distro" in
-      debian|ubuntu) apt install -y "${_installstring[@]}" || return 1 ;;
+      debian|ubuntu|raspbian) apt install -y "${_installstring[@]}" || return 1 ;;
       rocky) dnf install -y "${_installstring[@]}" || return 1 ;;
     esac
   fi
 
   echo "Cleaning up unnecessary packages..."
   case "$_distro" in
-    debian|ubuntu)
+    debian|ubuntu|raspbian)
       apt autoremove -y || return 1
       apt autoclean -y || return 1
       ;;
@@ -122,6 +122,10 @@ install_mc_client () {
   case "$(uname -m)" in
     x86_64) _mc_arch="amd64" ;;
     aarch64) _mc_arch="arm64" ;;
+    armv6l|armv7l)
+      echo "Skipping the MinIO mc client: Linux ARM 32-bit builds are unavailable."
+      return 0
+      ;;
     *)
       echo "Unsupported architecture for the MinIO mc client: $(uname -m)" >&2
       return 1
@@ -253,20 +257,24 @@ fi
 _debug "_distro -> $_distro"
 
 case "$_distro" in
-  debian|ubuntu|rocky) ;;
+  debian|ubuntu|raspbian|rocky) ;;
   *)
     echo "Unsupported Linux distribution: $_distro" >&2
     exit 1
     ;;
 esac
-declare -n _pkgs="_${_distro}_pkgs"
+_pkg_distro="$_distro"
+if [ "$_pkg_distro" = "raspbian" ]; then
+  _pkg_distro="debian"
+fi
+declare -n _pkgs="_${_pkg_distro}_pkgs"
 
 clean bashrc
 clean bash_profile
 clean bash_logout
 
 case "$_distro" in
-  debian|ubuntu) apt_update || exit 1 ;;
+  debian|ubuntu|raspbian) apt_update || exit 1 ;;
   rocky) dnf_update || exit 1 ;;
 esac
 check_apps
