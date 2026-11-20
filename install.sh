@@ -199,7 +199,7 @@ install_czkawka_cli () {
     return 1
   fi
 
-  if ! mkdir -p "$_czkawka_dest" || ! install -m 0755 "$_czkawka_tmp" "${_czkawka_dest}/czkawka_cli"; then
+  if ! mkdir -p "$_czkawka_dest" || ! install -m 0755 "$_czkawka_tmp" "${_czkawka_dest}/czkawka"; then
     rm -f "$_czkawka_tmp"
     echo "Failed to install the Czkawka CLI in ${_czkawka_dest}." >&2
     return 1
