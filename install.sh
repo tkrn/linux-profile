@@ -226,24 +226,69 @@ set_user_bin_ownership () {
 }
 
 create_userdir () {
-  mkdir -p "$1" || return 1
-  chown -R "${_username}:${_usergroup}" "$1" || return 1
-  chown "${_username}:${_usergroup}" "$1" || return 1
+  local _owner _group _mode
+  if [ -d "$1" ]; then
+    echo "User directory already exists: $1"
+  else
+    echo "Creating user directory: $1"
+    mkdir -p "$1" || return 1
+  fi
+
+  read -r _owner _group _mode < <(stat -c '%U %G %a' "$1") || return 1
+  if [ "$_owner" != "$_username" ] || [ "$_group" != "$_usergroup" ]; then
+    echo "Correcting ownership of $1 from ${_owner}:${_group} to ${_username}:${_usergroup}"
+    chown -R "${_username}:${_usergroup}" "$1" || return 1
+    chown "${_username}:${_usergroup}" "$1" || return 1
+  else
+    echo "Ownership is correct for $1: ${_owner}:${_group}"
+  fi
+  if [ "$_truenas" != true ] && [ "$_mode" != 775 ]; then
+    echo "Correcting permissions of $1 from ${_mode} to 775"
+    chmod 775 "$1" || return 1
+  elif [ "$_truenas" != true ]; then
+    echo "Permissions are correct for $1: ${_mode}"
+  else
+    echo "Skipping permission-mode check on TrueNAS for $1"
+  fi
 }
 
 create_rootdir () {
-  mkdir -p "$1" || return 1
-  chown -R root:root "$1" || return 1
-  chown root:root "$1" || return 1
+  local _owner _group _mode
+  if [ -d "$1" ]; then
+    echo "Root directory already exists: $1"
+  else
+    echo "Creating root directory: $1"
+    mkdir -p "$1" || return 1
+  fi
+
+  read -r _owner _group _mode < <(stat -c '%U %G %a' "$1") || return 1
+  if [ "$_owner" != root ] || [ "$_group" != root ]; then
+    echo "Correcting ownership of $1 from ${_owner}:${_group} to root:root"
+    chown -R root:root "$1" || return 1
+    chown root:root "$1" || return 1
+  else
+    echo "Ownership is correct for $1: root:root"
+  fi
+  if [ "$_truenas" != true ] && [ "$_mode" != 775 ]; then
+    echo "Correcting permissions of $1 from ${_mode} to 775"
+    chmod 775 "$1" || return 1
+  elif [ "$_truenas" != true ]; then
+    echo "Permissions are correct for $1: ${_mode}"
+  else
+    echo "Skipping permission-mode check on TrueNAS for $1"
+  fi
 }
 
 create_userlink () {
+  echo "Creating user symlink: $2 -> $1"
   ln -sf "$1" "$2"
+  echo "Setting symlink ownership to ${_username}:${_usergroup}: $2"
   chown -h "${_username}:${_usergroup}" "$2"
 }
 
 create_rootlink () {
-  ln -sf $1 $2
+  echo "Creating root symlink: $2 -> $1"
+  ln -sf "$1" "$2"
 }
 
 #######################################################################
@@ -406,6 +451,17 @@ echo
 
 cd "$_homedir"
 create_userdir "${_homedir}/.config"
+
+if [ "$_truenas" = true ]; then
+  _mc_client_path="${_homedir}/.bin/mc"
+else
+  _mc_client_path="/usr/local/bin/mc"
+fi
+
+if [ -x "$_mc_client_path" ]; then
+  create_userdir "${_homedir}/.mc"
+fi
+
 create_userdir "${_homedir}/.config/fastfetch"
 create_userdir "${_homedir}/.vim"
 create_userdir "${_homedir}/.vim/colors"
