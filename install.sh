@@ -168,19 +168,64 @@ install_mc_client () {
   fi
 }
 
+install_czkawka_cli () {
+  local _czkawka_tmp _czkawka_dest _czkawka_arch
+  if [ "$_os" != linux ]; then
+    _debug "Skipping Czkawka CLI: supported only on Linux"
+    return 0
+  fi
+  case "$(uname -m)" in
+    x86_64) _czkawka_arch="x86_64" ;;
+    aarch64|arm64) _czkawka_arch="arm64" ;;
+    *)
+      _debug "Skipping Czkawka CLI: unsupported architecture $(uname -m)"
+      return 0
+      ;;
+  esac
+
+  if [ "$_truenas" = true ]; then
+    _czkawka_dest="${_homedir}/.bin"
+  else
+    _czkawka_dest="/usr/local/bin"
+  fi
+
+  _czkawka_tmp=$(mktemp) || return 1
+  echo "Downloading Czkawka CLI for Linux ${_czkawka_arch}..."
+  if ! curl --fail --progress-bar --location \
+    "https://github.com/qarmin/czkawka/releases/download/12.0.2/linux_czkawka_cli_${_czkawka_arch}" \
+    --output "$_czkawka_tmp"; then
+    rm -f "$_czkawka_tmp"
+    echo "Failed to download the Czkawka CLI." >&2
+    return 1
+  fi
+
+  if ! mkdir -p "$_czkawka_dest" || ! install -m 0755 "$_czkawka_tmp" "${_czkawka_dest}/czkawka_cli"; then
+    rm -f "$_czkawka_tmp"
+    echo "Failed to install the Czkawka CLI in ${_czkawka_dest}." >&2
+    return 1
+  fi
+  rm -f "$_czkawka_tmp"
+}
+
 create_userdir () {
   mkdir -p $1
-  chown $(logname):$(logname) $1 -R
-  chmod 775 $1 
+  if [ "$_truenas" != true ]; then
+    chown $(logname):$(logname) $1 -R
+    chmod 775 $1
+  fi
 }
 
 create_rootdir () {
   mkdir -p $1
-  chmod 775 $1 
+  if [ "$_truenas" != true ]; then
+    chmod 775 $1
+  fi
 }
 create_userlink () {
   ln -sf $1 $2
-  chown $(logname):$(logname) $2
+  if [ "$_truenas" != true ]; then
+    chown $(logname):$(logname) $2
+  fi
 }
 
 create_rootlink () {
@@ -271,9 +316,11 @@ _debug "_truenas -> $_truenas"
 
 if [ "$_truenas" = true ]; then
   _debug "TrueNAS detected; skipping package installation and updates"
+  _os_summary="TrueNAS (${_uname})"
 elif [ -r /etc/os-release ]; then
   . /etc/os-release
   _distro="${ID,,}"
+  _os_summary="${PRETTY_NAME:-$_distro} (${_distro})"
 else
   echo "Unable to determine Linux distribution: /etc/os-release is unavailable." >&2
   exit 1
@@ -281,9 +328,6 @@ fi
 _debug "_distro -> $_distro"
 
 if [ "$_truenas" != true ]; then
-  if [ "$_distro" = rocky ]; then
-    enable_epel || exit 1
-  fi
   case "$_distro" in
     debian|ubuntu|raspbian|rocky) ;;
     *)
@@ -296,6 +340,20 @@ if [ "$_truenas" != true ]; then
     _pkg_distro="debian"
   fi
   declare -n _pkgs="_${_pkg_distro}_pkgs"
+fi
+
+echo "Detected operating system: ${_os_summary}"
+read -r -p "Is this correct? Continue? [y/N] " _confirm_os
+case "${_confirm_os,,}" in
+  y|yes) ;;
+  *)
+    echo "Installation cancelled."
+    exit 0
+    ;;
+esac
+
+if [ "$_truenas" != true ] && [ "$_distro" = rocky ]; then
+  enable_epel || exit 1
 fi
 
 clean bashrc
@@ -314,6 +372,7 @@ if [ "$_truenas" != true ]; then
   fi
 fi
 install_mc_client || exit 1
+install_czkawka_cli || exit 1
 
 echo "------------------------------------------"
 echo "   Applying user profile customizations"
@@ -324,7 +383,9 @@ cd "$_homedir"
 create_userdir "${_homedir}/.config/fastfetch"
 create_userdir "${_homedir}/.vim/colors"
 create_userdir "${_homedir}/.ssh"
-chmod 700 "${_homedir}/.ssh"
+if [ "$_truenas" != true ]; then
+  chmod 700 "${_homedir}/.ssh"
+fi
 create_userlink "../linux-profile/conf/authorized_keys" ".ssh/authorized_keys"
 create_userlink "linux-profile/conf/bashrc" ".bashrc"
 create_userlink "linux-profile/conf/bash_aliases" ".bash_aliases"
