@@ -207,6 +207,20 @@ install_czkawka_cli () {
   rm -f "$_czkawka_tmp"
 }
 
+set_truenas_bin_ownership () {
+  local _username _usergroup _bindir _binary
+  [ "$_truenas" = true ] || return 0
+
+  _username=$(logname) || return 1
+  _usergroup=$(id -gn "$_username") || return 1
+  _bindir="${_homedir}/.bin"
+  chown "${_username}:${_usergroup}" "$_bindir" || return 1
+  for _binary in "${_bindir}/mc" "${_bindir}/czkawka"; do
+    [ -e "$_binary" ] || continue
+    chown "${_username}:${_usergroup}" "$_binary" || return 1
+  done
+}
+
 create_userdir () {
   mkdir -p $1
   if [ "$_truenas" != true ]; then
@@ -373,6 +387,7 @@ if [ "$_truenas" != true ]; then
 fi
 install_mc_client || exit 1
 install_czkawka_cli || exit 1
+set_truenas_bin_ownership || exit 1
 
 echo "------------------------------------------"
 echo "   Applying user profile customizations"
