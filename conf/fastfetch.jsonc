@@ -29,7 +29,10 @@
     },
     {
       "type": "zpool",
-      "format": "{name} {state} {size-used}/{size-total} ({used-percentage})"
+      "percent": {
+        "type": ["bar", "num"]
+      },
+      "format": "{name} {state} {size-used}/{size-total} {used-percentage-bar} ({used-percentage})"
     }
   ]
 }
