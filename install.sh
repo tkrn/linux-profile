@@ -11,6 +11,10 @@ _debug() {
   }
 }
 
+_green() { printf '\033[32m%s\033[0m\n' "$*"; }
+_yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
+_red() { printf '\033[31m%s\033[0m\n' "$*" >&2; }
+
 clean () {
   [ -f ~/.$1 ] || return
   mv ~/.$1 ~/.$1.sav
@@ -226,69 +230,129 @@ set_user_bin_ownership () {
 }
 
 create_userdir () {
-  local _owner _group _mode
+  local _owner _group _mode _expected_mode=775 _created=false
+  if [ "$1" = "${_homedir}/.ssh" ]; then
+    _expected_mode=700
+  fi
   if [ -d "$1" ]; then
     echo "User directory already exists: $1"
   else
     echo "Creating user directory: $1"
-    mkdir -p "$1" || return 1
+    if ! mkdir -p "$1"; then
+      _red "Failed to create user directory: $1"
+      return 1
+    fi
+    _created=true
   fi
 
-  read -r _owner _group _mode < <(stat -c '%U %G %a' "$1") || return 1
+  if ! read -r _owner _group _mode < <(stat -c '%U %G %a' "$1"); then
+    _red "Failed to inspect user directory: $1"
+    return 1
+  fi
   if [ "$_owner" != "$_username" ] || [ "$_group" != "$_usergroup" ]; then
-    echo "Correcting ownership of $1 from ${_owner}:${_group} to ${_username}:${_usergroup}"
-    chown -R "${_username}:${_usergroup}" "$1" || return 1
-    chown "${_username}:${_usergroup}" "$1" || return 1
+    _yellow "Correcting ownership of $1 from ${_owner}:${_group} to ${_username}:${_usergroup}"
+    if ! chown -R "${_username}:${_usergroup}" "$1" || ! chown "${_username}:${_usergroup}" "$1"; then
+      _red "Failed to set ownership on user directory: $1"
+      return 1
+    fi
   else
     echo "Ownership is correct for $1: ${_owner}:${_group}"
   fi
-  if [ "$_truenas" != true ] && [ "$_mode" != 775 ]; then
-    echo "Correcting permissions of $1 from ${_mode} to 775"
-    chmod 775 "$1" || return 1
-  elif [ "$_truenas" != true ]; then
+  if { [ "$_truenas" != true ] || [ "$_expected_mode" = 700 ]; } && [ "$_mode" != "$_expected_mode" ]; then
+    _yellow "Correcting permissions of $1 from ${_mode} to ${_expected_mode}"
+    if ! chmod "$_expected_mode" "$1"; then
+      _red "Failed to set permissions on user directory: $1"
+      return 1
+    fi
+  elif [ "$_truenas" != true ] || [ "$_expected_mode" = 700 ]; then
     echo "Permissions are correct for $1: ${_mode}"
   else
     echo "Skipping permission-mode check on TrueNAS for $1"
+  fi
+  if [ "$_created" = true ]; then
+    _green "Created user directory successfully: $1"
   fi
 }
 
 create_rootdir () {
-  local _owner _group _mode
+  local _owner _group _mode _created=false
   if [ -d "$1" ]; then
     echo "Root directory already exists: $1"
   else
     echo "Creating root directory: $1"
-    mkdir -p "$1" || return 1
+    if ! mkdir -p "$1"; then
+      _red "Failed to create root directory: $1"
+      return 1
+    fi
+    _created=true
   fi
 
-  read -r _owner _group _mode < <(stat -c '%U %G %a' "$1") || return 1
+  if ! read -r _owner _group _mode < <(stat -c '%U %G %a' "$1"); then
+    _red "Failed to inspect root directory: $1"
+    return 1
+  fi
   if [ "$_owner" != root ] || [ "$_group" != root ]; then
-    echo "Correcting ownership of $1 from ${_owner}:${_group} to root:root"
-    chown -R root:root "$1" || return 1
-    chown root:root "$1" || return 1
+    _yellow "Correcting ownership of $1 from ${_owner}:${_group} to root:root"
+    if ! chown -R root:root "$1" || ! chown root:root "$1"; then
+      _red "Failed to set ownership on root directory: $1"
+      return 1
+    fi
   else
     echo "Ownership is correct for $1: root:root"
   fi
   if [ "$_truenas" != true ] && [ "$_mode" != 775 ]; then
-    echo "Correcting permissions of $1 from ${_mode} to 775"
-    chmod 775 "$1" || return 1
+    _yellow "Correcting permissions of $1 from ${_mode} to 775"
+    if ! chmod 775 "$1"; then
+      _red "Failed to set permissions on root directory: $1"
+      return 1
+    fi
   elif [ "$_truenas" != true ]; then
     echo "Permissions are correct for $1: ${_mode}"
   else
     echo "Skipping permission-mode check on TrueNAS for $1"
   fi
+  if [ "$_created" = true ]; then
+    _green "Created root directory successfully: $1"
+  fi
 }
 
 create_userlink () {
+  local _mode
   echo "Creating user symlink: $2 -> $1"
-  ln -sf "$1" "$2"
+  if ! ln -sf "$1" "$2"; then
+    _red "Failed to create user symlink: $2"
+    return 1
+  fi
   echo "Setting symlink ownership to ${_username}:${_usergroup}: $2"
-  chown -h "${_username}:${_usergroup}" "$2"
+  if ! chown -h "${_username}:${_usergroup}" "$2"; then
+    _red "Failed to set ownership on user symlink: $2"
+    return 1
+  fi
+  if [ "$2" = ".ssh/authorized_keys" ]; then
+    if ! _mode=$(stat -c '%a' "$2"); then
+      _red "Failed to inspect authorized_keys permissions: $2"
+      return 1
+    fi
+    if [ "$_mode" != 600 ]; then
+      _yellow "Correcting permissions of $2 from ${_mode} to 600"
+      if ! chmod 600 "$2"; then
+        _red "Failed to set permissions on authorized_keys: $2"
+        return 1
+      fi
+    else
+      echo "Permissions are correct for $2: ${_mode}"
+    fi
+  fi
+  _green "Created user symlink successfully: $2 -> $1"
 }
 
 create_rootlink () {
   echo "Creating root symlink: $2 -> $1"
-  ln -sf "$1" "$2"
+  if ! ln -sf "$1" "$2"; then
+    _red "Failed to create root symlink: $2"
+    return 1
+  fi
+  _green "Created root symlink successfully: $2 -> $1"
 }
 
 #######################################################################
@@ -466,10 +530,6 @@ create_userdir "${_homedir}/.config/fastfetch"
 create_userdir "${_homedir}/.vim"
 create_userdir "${_homedir}/.vim/colors"
 create_userdir "${_homedir}/.ssh"
-
-if [ "$_truenas" != true ]; then
-  chmod 700 "${_homedir}/.ssh"
-fi
 create_userlink "../linux-profile/conf/authorized_keys" ".ssh/authorized_keys"
 create_userlink "linux-profile/conf/bashrc" ".bashrc"
 create_userlink "linux-profile/conf/bash_aliases" ".bash_aliases"
