@@ -207,39 +207,32 @@ install_czkawka_cli () {
   rm -f "$_czkawka_tmp"
 }
 
-set_truenas_bin_ownership () {
-  local _username _usergroup _bindir _binary
+set_user_bin_ownership () {
+  local _bindir _binary
   [ "$_truenas" = true ] || return 0
+  [ -d "${_homedir}/.bin" ] || return 0
 
-  _username=$(logname) || return 1
-  _usergroup=$(id -gn "$_username") || return 1
   _bindir="${_homedir}/.bin"
   chown "${_username}:${_usergroup}" "$_bindir" || return 1
   for _binary in "${_bindir}/mc" "${_bindir}/czkawka"; do
     [ -e "$_binary" ] || continue
-    chown "${_username}:${_usergroup}" "$_binary" || return 1
+    chown -h "${_username}:${_usergroup}" "$_binary" || return 1
   done
 }
 
 create_userdir () {
-  mkdir -p $1
-  if [ "$_truenas" != true ]; then
-    chown $(logname):$(logname) $1 -R
-    chmod 775 $1
-  fi
+  mkdir -p "$1"
+  chown -R "${_username}:${_usergroup}" "$1"
+  chmod 775 "$1"
 }
 
 create_rootdir () {
-  mkdir -p $1
-  if [ "$_truenas" != true ]; then
-    chmod 775 $1
-  fi
+  mkdir -p "$1"
+  chmod 775 "$1"
 }
 create_userlink () {
-  ln -sf $1 $2
-  if [ "$_truenas" != true ]; then
-    chown $(logname):$(logname) $2
-  fi
+  ln -sf "$1" "$2"
+  chown -h "${_username}:${_usergroup}" "$2"
 }
 
 create_rootlink () {
@@ -316,7 +309,9 @@ declare -A _rocky_pkgs=(
 _scriptpath="$(dirname "$(readlink -f "$0")")"
 _debug "_scriptpath -> $_scriptpath"
 
-_homedir=$(getent passwd $(logname) | awk -F: '{print $6}')
+_username=$(logname)
+_usergroup=$(id -gn "$_username")
+_homedir=$(getent passwd "$_username" | awk -F: '{print $6}')
 _debug "_homedir -> $_homedir"
 
 _rootdir=$(getent passwd root | awk -F: '{print $6}')
@@ -330,6 +325,8 @@ if [[ "${_uname,,}" == *truenas* ]]; then
 fi
 _debug "_os -> $_os"
 _debug "_truenas -> $_truenas"
+
+echo "Running as user '${_username}' with group '${_usergroup}'."
 
 if [ "$_truenas" = true ]; then
   _debug "TrueNAS detected; skipping package installation and updates"
@@ -390,7 +387,7 @@ if [ "$_truenas" != true ]; then
 fi
 install_mc_client || exit 1
 install_czkawka_cli || exit 1
-set_truenas_bin_ownership || exit 1
+set_user_bin_ownership || exit 1
 
 echo "------------------------------------------"
 echo "   Applying user profile customizations"
