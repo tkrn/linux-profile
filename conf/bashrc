@@ -119,7 +119,9 @@ if ! shopt -oq posix; then
 fi
 
 echo ""
-fastfetch
+if command -v fastfetch >/dev/null 2>&1; then
+  fastfetch
+fi
 echo ""
 
 if [ "$EUID" -eq 0 ]; then

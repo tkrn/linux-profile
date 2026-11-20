@@ -80,6 +80,11 @@ dnf_update () {
   echo "-------------------------------------"
 }
 
+enable_epel () {
+  echo "Enabling the EPEL repository..."
+  dnf install -y epel-release || return 1
+}
+
 install_apps () {
   echo "-------------------------------------"
   echo "   Installing applications"
@@ -118,7 +123,7 @@ install_apps () {
 }
 
 install_mc_client () {
-  local _mc_arch _mc_tmp
+  local _mc_arch _mc_tmp _mc_dest
   case "$(uname -m)" in
     x86_64) _mc_arch="amd64" ;;
     aarch64) _mc_arch="arm64" ;;
@@ -142,14 +147,25 @@ install_mc_client () {
     return 1
   fi
 
-  if ! chmod +x "$_mc_tmp" || ! install -m 0755 "$_mc_tmp" /usr/local/bin/mc; then
+  if [ "$_truenas" = true ]; then
+    _mc_dest="${_homedir}/.bin"
+    if ! mkdir -p "$_mc_dest" || ! install -m 0755 "$_mc_tmp" "${_mc_dest}/mc"; then
+      rm -f "$_mc_tmp"
+      echo "Failed to install the MinIO mc client in ${_mc_dest}." >&2
+      return 1
+    fi
+  elif ! chmod +x "$_mc_tmp" || ! install -m 0755 "$_mc_tmp" /usr/local/bin/mc; then
     rm -f "$_mc_tmp"
     echo "Failed to install the MinIO mc client." >&2
     return 1
   fi
   rm -f "$_mc_tmp"
 
-  mc --version || return 1
+  if [ "$_truenas" = true ]; then
+    "${_mc_dest}/mc" --version || return 1
+  else
+    mc --version || return 1
+  fi
 }
 
 create_userdir () {
@@ -244,10 +260,18 @@ _debug "_homedir -> $_homedir"
 _rootdir=$(getent passwd root | awk -F: '{print $6}')
 _debug "_rootdir -> $_rootdir"
 
+_uname=$(uname -a)
 _os=$(uname | tr '[:upper:]' '[:lower:]')
+_truenas=false
+if [[ "${_uname,,}" == *truenas* ]]; then
+  _truenas=true
+fi
 _debug "_os -> $_os"
+_debug "_truenas -> $_truenas"
 
-if [ -r /etc/os-release ]; then
+if [ "$_truenas" = true ]; then
+  _debug "TrueNAS detected; skipping package installation and updates"
+elif [ -r /etc/os-release ]; then
   . /etc/os-release
   _distro="${ID,,}"
 else
@@ -256,31 +280,38 @@ else
 fi
 _debug "_distro -> $_distro"
 
-case "$_distro" in
-  debian|ubuntu|raspbian|rocky) ;;
-  *)
-    echo "Unsupported Linux distribution: $_distro" >&2
-    exit 1
-    ;;
-esac
-_pkg_distro="$_distro"
-if [ "$_pkg_distro" = "raspbian" ]; then
-  _pkg_distro="debian"
+if [ "$_truenas" != true ]; then
+  if [ "$_distro" = rocky ]; then
+    enable_epel || exit 1
+  fi
+  case "$_distro" in
+    debian|ubuntu|raspbian|rocky) ;;
+    *)
+      echo "Unsupported Linux distribution: $_distro" >&2
+      exit 1
+      ;;
+  esac
+  _pkg_distro="$_distro"
+  if [ "$_pkg_distro" = "raspbian" ]; then
+    _pkg_distro="debian"
+  fi
+  declare -n _pkgs="_${_pkg_distro}_pkgs"
 fi
-declare -n _pkgs="_${_pkg_distro}_pkgs"
 
 clean bashrc
 clean bash_profile
 clean bash_logout
 
-case "$_distro" in
-  debian|ubuntu|raspbian) apt_update || exit 1 ;;
-  rocky) dnf_update || exit 1 ;;
-esac
-check_apps
+if [ "$_truenas" != true ]; then
+  case "$_distro" in
+    debian|ubuntu|raspbian) apt_update || exit 1 ;;
+    rocky) dnf_update || exit 1 ;;
+  esac
+  check_apps
 
-if [ ${#_install[@]} -gt 0 ]; then
-  install_apps || exit 1
+  if [ ${#_install[@]} -gt 0 ]; then
+    install_apps || exit 1
+  fi
 fi
 install_mc_client || exit 1
 
