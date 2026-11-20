@@ -221,15 +221,17 @@ set_user_bin_ownership () {
 }
 
 create_userdir () {
-  mkdir -p "$1"
-  chown -R "${_username}:${_usergroup}" "$1"
-  chmod 775 "$1"
+  mkdir -p "$1" || return 1
+  chown -R "${_username}:${_usergroup}" "$1" || return 1
+  chown "${_username}:${_usergroup}" "$1" || return 1
 }
 
 create_rootdir () {
-  mkdir -p "$1"
-  chmod 775 "$1"
+  mkdir -p "$1" || return 1
+  chown -R root:root "$1" || return 1
+  chown root:root "$1" || return 1
 }
+
 create_userlink () {
   ln -sf "$1" "$2"
   chown -h "${_username}:${_usergroup}" "$2"
