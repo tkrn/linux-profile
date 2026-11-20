@@ -28,6 +28,7 @@ check_apps () {
 }
 
 apt_update () {
+  echo
   echo "-------------------------------------"
   echo "   Starting system update process"
   echo "-------------------------------------"
@@ -58,9 +59,11 @@ apt_update () {
   echo "-------------------------------------"
   echo "   System update complete!"
   echo "-------------------------------------"
+  echo
 }
 
 dnf_update () {
+  echo
   echo "-------------------------------------"
   echo "   Starting system update process"
   echo "-------------------------------------"
@@ -120,6 +123,8 @@ install_apps () {
   echo "-------------------------------------"
   echo "   Applications installed!"
   echo "-------------------------------------"
+  echo
+
 }
 
 install_mc_client () {
@@ -328,6 +333,7 @@ fi
 _debug "_os -> $_os"
 _debug "_truenas -> $_truenas"
 
+echo
 echo "Running as user '${_username}' with group '${_usergroup}'."
 
 if [ "$_truenas" = true ]; then
@@ -359,6 +365,7 @@ if [ "$_truenas" != true ]; then
 fi
 
 echo "Detected operating system: ${_os_summary}"
+echo
 read -r -p "Is this correct? Continue? [y/N] " _confirm_os
 case "${_confirm_os,,}" in
   y|yes) ;;
@@ -391,15 +398,19 @@ install_mc_client || exit 1
 install_czkawka_cli || exit 1
 set_user_bin_ownership || exit 1
 
+echo
 echo "------------------------------------------"
 echo "   Applying user profile customizations"
 echo "------------------------------------------"
 echo
 
 cd "$_homedir"
+create_userdir "${_homedir}/.config"
 create_userdir "${_homedir}/.config/fastfetch"
+create_userdir "${_homedir}/.vim"
 create_userdir "${_homedir}/.vim/colors"
 create_userdir "${_homedir}/.ssh"
+
 if [ "$_truenas" != true ]; then
   chmod 700 "${_homedir}/.ssh"
 fi
@@ -409,6 +420,7 @@ create_userlink "linux-profile/conf/bash_aliases" ".bash_aliases"
 create_userlink "../../linux-profile/conf/fastfetch.jsonc" ".config/fastfetch/config.jsonc"
 create_userlink "linux-profile/conf/vimrc" ".vimrc"
 
+echo
 echo "------------------------------------------"
 echo "   Applying root profile customizations"
 echo "------------------------------------------"
