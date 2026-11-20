@@ -32,21 +32,22 @@ check_apps () {
 }
 
 apt_update () {
+  local _source_file
   echo
   echo "-------------------------------------"
   echo "   Starting system update process"
   echo "-------------------------------------"
   echo
 
+  for _source_file in /etc/apt/sources.list.d/*zhangsongcui* /etc/apt/sources.list.d/deb.griffo.io.list; do
+    [ -f "$_source_file" ] || continue
+    echo "Removing external Fastfetch repository source: $_source_file"
+    rm -f "$_source_file" || return 1
+  done
+
   # Update package list
   echo "Updating package list..."
   apt update || return 1
-
-  if [ "$_distro" == "ubuntu" ]; then
-    apt install software-properties-common -y || return 1
-    add-apt-repository ppa:zhangsongcui3371/fastfetch -y || return 1
-    apt update || return 1
-  fi
 
   # Upgrade all packages automatically
   echo
@@ -129,6 +130,42 @@ install_apps () {
   echo "-------------------------------------"
   echo
 
+}
+
+install_fastfetch_manual () {
+  local _fastfetch_url _fastfetch_ext _fastfetch_tmp
+  case "$_distro" in
+    debian|ubuntu)
+      _fastfetch_ext="deb"
+      _fastfetch_url="https://github.com/fastfetch-cli/fastfetch/releases/download/2.71.0/fastfetch-linux-amd64.deb"
+      ;;
+    rocky)
+      _fastfetch_ext="rpm"
+      _fastfetch_url="https://github.com/fastfetch-cli/fastfetch/releases/download/2.71.0/fastfetch-linux-amd64.rpm"
+      ;;
+    *) return 0 ;;
+  esac
+
+  if [ "$(uname -m)" != x86_64 ]; then
+    echo "Skipping Fastfetch 2.71.0: the supplied package is for x86_64 only."
+    return 0
+  fi
+
+  _fastfetch_tmp=$(mktemp --suffix=".${_fastfetch_ext}") || return 1
+  echo "Downloading Fastfetch 2.71.0 for ${_distro}..."
+  if ! curl --fail --progress-bar --location "$_fastfetch_url" --output "$_fastfetch_tmp"; then
+    rm -f "$_fastfetch_tmp"
+    echo "Failed to download Fastfetch 2.71.0." >&2
+    return 1
+  fi
+
+  case "$_fastfetch_ext" in
+    deb) apt install -y "$_fastfetch_tmp" ;;
+    rpm) dnf install -y "$_fastfetch_tmp" ;;
+  esac
+  local _install_status=$?
+  rm -f "$_fastfetch_tmp"
+  return "$_install_status"
 }
 
 install_mc_client () {
@@ -366,7 +403,6 @@ declare -A _debian_pkgs=(
   [7z]="p7zip-full"
   [zip]="zip"
   [screen]="screen"
-  [fastfetch]="fastfetch"
   [htop]="htop"
   [bashtop]="bashtop"
   [btop]="btop"
@@ -387,7 +423,6 @@ declare -A _ubuntu_pkgs=(
   [7z]="p7zip-full"
   [zip]="zip"
   [screen]="screen"
-  [fastfetch]="fastfetch"
   [htop]="htop"
   [bashtop]="bashtop"
   [btop]="btop"
@@ -408,7 +443,6 @@ declare -A _rocky_pkgs=(
   [7z]="p7zip"
   [zip]="zip"
   [screen]="screen"
-  [fastfetch]="fastfetch"
   [htop]="htop"
   [btop]="btop"
   [ifconfig]="net-tools"
@@ -502,6 +536,7 @@ if [ "$_truenas" != true ]; then
   if [ ${#_install[@]} -gt 0 ]; then
     install_apps || exit 1
   fi
+  install_fastfetch_manual || exit 1
 fi
 install_mc_client || exit 1
 install_czkawka_cli || exit 1
